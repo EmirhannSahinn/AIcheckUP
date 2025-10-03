@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>AIcheckUP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg1:#0f1226; --bg2:#1c2140;
+      --surface:#121426; --surface-2:#1a1f36;
+      --text:#e6f1ff; --muted:#9aa3b2;
+      --border: rgba(255,255,255,.08);
+      --blue:#4f8cff; --blue-600:#3a74f5;
+      --green:#22c55e; --green-700:#16a34a;
+      --red:#ef4444; --red-700:#dc2626;
+      --chip:#2a2f47;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--text);
+      background: radial-gradient(60% 60% at 10% 10%, #1a2151, transparent 60%),
+                  radial-gradient(60% 60% at 90% 90%, #1a2141, transparent 60%),
+                  linear-gradient(160deg, var(--bg1), var(--bg2));
+      font: 15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    }
+    .container{ max-width:1120px; padding:32px 20px 48px; margin:0 auto; }
+    .header{ display:flex; align-items:center; gap:16px; margin-bottom:20px; }
+    .header img{ height:54px; object-fit:contain }
+    .title{ font-size:28px; font-weight:800; letter-spacing:.2px }
+
+    .grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+    @media (min-width: 980px){ .grid{ grid-template-columns:1fr 1fr; } }
+
+    .card{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 16px 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .card h3{ margin:4px 0 14px; font-size:16px; color:var(--muted); font-weight:700; letter-spacing:.2px; }
+
+    label{ display:block; margin:10px 0 6px; color:var(--muted); font-weight:600 }
+    input[type="text"], input[type="email"]{
+      width:100%; padding:10px 12px; border-radius:12px; outline:none;
+      background:#0d1020; color:var(--text); border:1px solid var(--border);
+    }
+    input[type="file"]{ width:100% }
+    .radio-col label{ display:block; margin:6px 0 }
+
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid transparent;
+      border-radius:999px; padding:10px 16px; font-weight:800;
+      text-decoration:none; cursor:pointer; user-select:none;
+      transition: transform .06s ease, background .12s ease, box-shadow .12s ease;
+    }
+    .btn:active{ transform: translateY(1px) }
+    .btn-start{ background:var(--green); color:#02140a; box-shadow:0 6px 16px rgba(34,197,94,.25) }
+    .btn-start:hover{ background:var(--green-700) }
+    .btn-stop{ background:var(--red); color:#190606; box-shadow:0 6px 16px rgba(239,68,68,.25) }
+    .btn-stop:hover{ background:var(--red-700) }
+    .btn-ghost{ background:transparent; color:#b9c6ff; border-color:var(--border) }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+
+    .status{
+      display:inline-flex; align-items:center; gap:8px;
+      background: var(--chip);
+      border:1px solid var(--border);
+      padding:6px 10px; border-radius:999px; font-weight:700;
+    }
+    .ok{ color:#4ade80 } .stopped{ color:#f59e0b } .err{ color:#fb7185 }
+
+    .links a{ color:#8ecbff; text-decoration:underline; margin-right:16px }
+
+    /* run_id bilgisi chip */
+    .runid-info{ display:none; align-items:center; gap:.5rem; margin-top:.6rem; }
+    .runid-info.show{ display:flex; }
+    .chip{ background:#1f2937; color:#e5e7eb; border-radius:9999px; padding:.15rem .6rem; font-size:.75rem }
+    .mini-btn{ background:#111827; color:#e5e7eb; border:1px solid #374151; border-radius:.45rem; padding:.2rem .45rem; cursor:pointer }
+
+    .log-card{ grid-column:1 / -1; } /* tam genişlik */
+    .log{
+      width:100%; height:520px; padding:12px; border-radius:16px;
+      background:#0b0f20; color:var(--text); border:1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:13px; line-height:1.4;
+      white-space: pre; overflow:auto; resize:both;
+    }
+    .tiny{ opacity:.75; font-size:12px }
+    .grow{ flex:1 }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="/logo?v=2" alt="Insider logo">
+      <div class="title">AIcheckUP</div>
+    </div>
+
+    <div class="grid">
+      <!-- Kaynak -->
+      <div class="card">
+        <h3>Kaynak</h3>
+        <div class="radio-col">
+          <label><input type="radio" name="mode" value="local"> Yerel yol</label>
+          <label><input type="radio" name="mode" value="upload" checked> Dosya yükle</label>
+        </div>
+
+        <div id="localRow" style="display:none">
+          <label>JSON yolu</label>
+          <input id="jsonPath" type="text" placeholder="ör. data/design.json" />
+        </div>
+
+        <div id="uploadRow">
+          <label>JSON yükle</label>
+          <input id="fileJson" type="file" accept=".json" />
+        </div>
+
+        <label style="margin-top:10px">TARGET_TONE</label>
+        <input id="targetTone" type="text" placeholder="ör. tr-formal, en-casual" />
+      </div>
+
+      <!-- Bildirim -->
+      <div class="card">
+        <h3>Bildirim</h3>
+        <label><input id="emailChk" type="checkbox" /> Bittiğinde e-posta gönder</label>
+        <div class="row">
+          <input id="emailTo" type="email" placeholder="ornek@alan.com" class="grow" />
+          <span class="tiny">✉️ SMTP doğru ise çalışır</span>
+        </div>
+      </div>
+
+      <!-- Aksiyon -->
+      <div class="card">
+        <h3>Aksiyon</h3>
+        <div class="row">
+          <button id="run"  class="btn btn-start">▶ Başlat</button>
+          <button id="stop" class="btn btn-stop" disabled>■ Durdur</button>
+        </div>
+
+        <!-- run_id görüntüleme (gerekirse tamamen kaldırılabilir) -->
+        <div id="runid_info" class="runid-info">
+          <span class="chip">run_id</span>
+          <code id="runid_text"></code>
+          <button id="copy_runid" class="mini-btn" title="Kopyala">📋</button>
+        </div>
+
+        <div style="margin-top:10px" class="row">
+          <div id="status" class="status">Hazır</div>
+          <div class="links grow" style="text-align:right">
+            <a id="zip_link"  target="_blank"></a>
+            <a id="last_link" target="_blank"></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Not -->
+      <div class="card">
+        <h3>Not</h3>
+        <div class="tiny">Uzun log satırları yeni satıra geçmez; yatay scroll ile kaydırabilirsin.</div>
+      </div>
+
+      <!-- Log -->
+      <div class="card log-card">
+        <h3>Log</h3>
+        <textarea id="log" class="log" placeholder="Canlı log burada akacak..."></textarea>
+      </div>
+    </div>
+  </div>
+
+<script>
+let es = null;
+let CURRENT_RUN_ID = null;
+
+const modeLocal  = document.querySelector('input[value="local"]');
+const modeUpload = document.querySelector('input[value="upload"]');
+const localRow   = document.getElementById('localRow');
+const uploadRow  = document.getElementById('uploadRow');
+const runBtn     = document.getElementById('run');
+const stopBtn    = document.getElementById('stop');
+const statusEl   = document.getElementById('status');
+const zipLink    = document.getElementById('zip_link');
+const lastLink   = document.getElementById('last_link');
+
+modeLocal.onchange  = () => { localRow.style.display='block'; uploadRow.style.display='none'; };
+modeUpload.onchange = () => { localRow.style.display='none';  uploadRow.style.display='block'; };
+
+function setRunningUI(isRunning){
+  runBtn.disabled  = isRunning;
+  stopBtn.disabled = !isRunning;
+  statusEl.textContent = isRunning ? "⏳ Çalışıyor..." : "Hazır";
+  statusEl.className = "status";
+}
+function setFinishedUI(status){
+  if(status === "ok"){ statusEl.textContent = "✅ Bitti"; statusEl.className = "status ok"; }
+  else if(status === "stopped"){ statusEl.textContent = "⏹ Durduruldu"; statusEl.className = "status stopped"; }
+  else { statusEl.textContent = "❌ Hata"; statusEl.className = "status err"; }
+}
+function clearLinks(){
+  zipLink.textContent=""; zipLink.removeAttribute("href");
+  lastLink.textContent=""; lastLink.removeAttribute("href");
+}
+function showRunId(id){
+  CURRENT_RUN_ID = id;
+  const info = document.getElementById('runid_info');
+  document.getElementById('runid_text').textContent = id || "";
+  if (id) info.classList.add('show'); else info.classList.remove('show');
+}
+
+async function startRun(){
+  const input_mode = modeLocal.checked ? 'local' : 'upload';
+  const target_tone = document.getElementById('targetTone').value || '';
+  const email_enabled = (document.getElementById('emailChk').checked);
+  const email_to = document.getElementById('emailTo').value || '';
+  if(!target_tone){ alert('TARGET_TONE giriniz.'); return; }
+
+  clearLinks();
+  showRunId(null);
+  const ta = document.getElementById('log'); ta.value = '';
+
+  let run_id = null;
+  if (input_mode === 'local'){
+    const json_path = document.getElementById('jsonPath').value;
+    const res = await fetch('/run', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({input_mode, json_path, target_tone, email_enabled, email_to})});
+    const j = await res.json(); run_id = j.run_id;
+  } else {
+    const fj = document.getElementById('fileJson').files[0];
+    if(!fj){ alert('JSON seçmelisin.'); return; }
+    const fd = new FormData();
+    fd.append('file_json', fj);
+    fd.append('target_tone', target_tone);
+    fd.append('email_enabled', email_enabled ? 'true' : 'false');
+    fd.append('email_to', email_to || '');
+    const res = await fetch('/run-upload', {method:'POST', body: fd});
+    const j = await res.json(); run_id = j.run_id;
+  }
+
+  showRunId(run_id);
+  setRunningUI(true);
+
+  if (es) { es.close(); es = null; }
+
+  es = new EventSource('/stream/' + run_id);
+  es.onmessage = (e) => {
+    const ta = document.getElementById('log');
+    let chunk = e.data.replace(/\r\n/g, '\n');
+    if (ta.value && !ta.value.endsWith('\n') && !chunk.startsWith('\n')) ta.value += '\n';
+    ta.value += chunk;
+    ta.scrollTop = ta.scrollHeight;
+  };
+
+  es.onerror = async () => {
+    try {
+      const r = await fetch('/status/'+run_id);
+      const j = await r.json();
+      if (j.zip){  zipLink.textContent = "ZIP indir";       zipLink.href = "/download/"+run_id; }
+      if (j.last_file){ lastLink.textContent = "Son dosyayı indir"; lastLink.href = "/download-last/"+run_id; }
+
+      const labels = { ok:"Başarı", stopped:"Durduruldu", error:"Hata" };
+      if (j && j.status){
+        const ta = document.getElementById('log');
+        ta.value += `\n🏁 Program bitti (${labels[j.status] || j.status})\n`;
+        ta.scrollTop = ta.scrollHeight;
+      }
+      setFinishedUI(j.status);
+    } catch(e){ setFinishedUI("error"); }
+    setRunningUI(false);
+    es && es.close();
+  };
+}
+
+async function stopRun(){
+  if(!CURRENT_RUN_ID) return;
+  stopBtn.disabled = true;
+  try { await fetch('/stop/'+CURRENT_RUN_ID, {method:'POST'}); } catch(e){}
+}
+
+document.getElementById('run').onclick  = startRun;
+document.getElementById('stop').onclick = stopRun;
+document.getElementById('copy_runid').onclick = () => {
+  if (CURRENT_RUN_ID) navigator.clipboard.writeText(CURRENT_RUN_ID);
+};
+</script>
+</body>
+</html>
